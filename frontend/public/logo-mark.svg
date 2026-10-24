@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Milestone Judge">
+  <title>Milestone Judge</title>
+  <!-- Milestone pin: a verdict marker planted at a checkpoint -->
+  <path d="M16 2.75c-5.66 0-10.25 4.5-10.25 10.05 0 7.16 8.6 15.02 9.53 15.85a1.05 1.05 0 0 0 1.44 0c.93-.83 9.53-8.69 9.53-15.85C26.25 7.25 21.66 2.75 16 2.75Z" fill="#4f46e5"/>
+  <!-- Checkmark: the verdict itself -->
+  <path d="M11.6 12.9l2.9 2.9 5.9-5.9" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

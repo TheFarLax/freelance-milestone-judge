@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Restrained indigo / slate palette for a blockchain + AI developer tool. */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+
+  --color-ink-900: #0f172a;
+  --color-ink-700: #334155;
+  --color-ink-500: #64748b;
+  --color-line: #e2e8f0;
+  --color-surface: #f8fafc;
+}
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --muted-foreground: #64748b;
+    --border: #e2e8f0;
+    --primary: #4f46e5;
+    --success: #15803d;
+    --warning: #b45309;
+    --destructive: #b91c1c;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: #e0e7ff;
+    color: #312e81;
+  }
+
+  :focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Consistent page heading treatment across all screens. */
+  .page-title {
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    color: var(--color-ink-900);
+  }
+
+  .page-subtitle {
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--color-ink-500);
+    max-width: 42rem;
+  }
+
+  /* Card surface shared by dashboard, forms and results. */
+  .card {
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line);
+    background-color: #ffffff;
+  }
+
+  /* Muted informational panel. */
+  .panel {
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-surface);
+  }
+}
