@@ -3,6 +3,11 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useVerdict } from "@/lib/hooks/useVerdict";
+import { listLocalMilestones } from "@/lib/contracts/MilestoneJudge";
+import {
+  matchCriteria,
+  splitCriteriaBlob,
+} from "@/lib/contracts/criteriaMatch";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Link } from "@/components/ui/link";
@@ -13,12 +18,13 @@ import {
   ArrowLeft,
   CheckCircle2,
   FileQuestion,
+  Info,
   Loader2,
   MinusCircle,
   XCircle,
 } from "lucide-react";
 import type { BadgeVariant } from "@/components/ui/badge";
-import type { Decision } from "@/lib/contracts/types";
+import type { Decision, Verdict } from "@/lib/contracts/types";
 
 const DECISION: Record<
   Decision,
@@ -65,6 +71,147 @@ export default function EvaluationResultsPage() {
     >
       <EvaluationResults />
     </Suspense>
+  );
+}
+
+/**
+ * Side-by-side comparison of the locally saved acceptance criteria and the
+ * criteria recorded in the on-chain verdict.
+ *
+ * The on-chain verdict is always the source of truth for what was evaluated.
+ * Local metadata only supplies the "original" column; when it is absent (a
+ * different browser), the on-chain side still renders and a note explains the
+ * missing comparison. Nothing here re-evaluates or alters the verdict.
+ */
+function CriteriaComparisonSection({ verdict }: { verdict: Verdict }) {
+  const local = listLocalMilestones().find((m) => m.id === verdict.milestone_id);
+
+  const hasLocalCriteria =
+    !!local && typeof local.criteria === "string" && local.criteria.trim().length > 0;
+  const localLines = hasLocalCriteria ? splitCriteriaBlob(local!.criteria) : [];
+  const comparison = matchCriteria(localLines, verdict.criteria_results);
+  const showMismatch =
+    hasLocalCriteria &&
+    !comparison.complete &&
+    (comparison.unmatchedLocal.length > 0 || comparison.unmatchedOnChain.length > 0);
+
+  return (
+    <div className="border-b border-slate-100 p-5 sm:p-6">
+      <div className="flex items-center justify-between">
+        <p className="text-[13px] font-medium text-slate-500">
+          Criteria Comparison
+        </p>
+        {hasLocalCriteria && comparison.complete && (
+          <Badge variant="success" className="shrink-0">
+            {verdict.criteria_results.length} matched
+          </Badge>
+        )}
+      </div>
+
+      {!hasLocalCriteria && (
+        <div className="mt-3 flex gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-[13px] leading-5 text-slate-600">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+          <p>
+            The criteria evaluated on-chain are shown below with their results.
+            The original criteria were not found in this browser, so a
+            side-by-side comparison with your saved milestone is not available
+            here.
+          </p>
+        </div>
+      )}
+
+      {showMismatch && (
+        <div className="mt-3 flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-[13px] leading-5 text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+          <p>
+            Your saved criteria and the on-chain evaluation do not fully match.
+            The results below reflect the criteria recorded on-chain. This does
+            not indicate an error by the contract — it only means the stored
+            milestone text and the submitted criteria differ.
+          </p>
+        </div>
+      )}
+
+      {hasLocalCriteria && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                <th className="pb-2 pr-4 font-medium">Original Acceptance Criterion</th>
+                <th className="pb-2 pr-4 font-medium">Evaluated Criterion</th>
+                <th className="pb-2 font-medium">Result</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {comparison.matched.map((m, i) => (
+                <tr key={`m-${i}`} className="align-top">
+                  <td className="py-2.5 pr-4 leading-5 text-slate-700">{m.original}</td>
+                  <td className="py-2.5 pr-4 leading-5 text-slate-600">
+                    {m.evaluated}
+                    {m.fuzzy && (
+                      <span className="ml-1.5 text-[11px] text-slate-400">≈</span>
+                    )}
+                  </td>
+                  <td className="py-2.5">
+                    <Badge variant={CRITERION_VARIANT[m.status] ?? "warning"}>
+                      {CRITERION_LABEL[m.status] ?? m.status}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+              {comparison.unmatchedOnChain.map((u, i) => (
+                <tr key={`u-${i}`} className="align-top">
+                  <td className="py-2.5 pr-4 text-[13px] italic text-slate-400">—</td>
+                  <td className="py-2.5 pr-4 leading-5 text-slate-600">{u.evaluated}</td>
+                  <td className="py-2.5">
+                    <Badge variant={CRITERION_VARIANT[u.status] ?? "warning"}>
+                      {CRITERION_LABEL[u.status] ?? u.status}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+              {comparison.unmatchedLocal.map((u, i) => (
+                <tr key={`l-${i}`} className="align-top">
+                  <td className="py-2.5 pr-4 leading-5 text-slate-700">{u.original}</td>
+                  <td className="py-2.5 pr-4 text-[13px] italic text-slate-400">
+                    not found on-chain
+                  </td>
+                  <td className="py-2.5">
+                    <Badge variant="outline">No result</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* No local criteria: show the on-chain side only, still readable. */}
+      {!hasLocalCriteria && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[360px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                <th className="pb-2 pr-4 font-medium">Evaluated Criterion</th>
+                <th className="pb-2 font-medium">Result</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {comparison.onChain.map((c, i) => (
+                <tr key={`oc-${i}`} className="align-top">
+                  <td className="py-2.5 pr-4 leading-5 text-slate-700">{c.criterion}</td>
+                  <td className="py-2.5">
+                    <Badge variant={CRITERION_VARIANT[c.status] ?? "warning"}>
+                      {CRITERION_LABEL[c.status] ?? c.status}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -188,6 +335,8 @@ function EvaluationResults() {
             </p>
           </div>
         </div>
+
+        <CriteriaComparisonSection verdict={verdict} />
 
         {/* Explanation */}
         <div className="border-b border-slate-100 p-5 sm:p-6">
